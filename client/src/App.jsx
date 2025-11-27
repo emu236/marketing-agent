@@ -1,20 +1,45 @@
-// Wersja Ostateczna - Próba naprawy
-// client/src/App.jsx - Wersja naprawcza
+// client/src/App.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
+import { supabase } from './supabaseClient'; // Baza danych
+import Auth from './Auth'; // Ekran logowania
 import './App.css';
 
 function App() {
+  // 1. Sprawdzanie sesji użytkownika
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // JEŚLI NIE ZALOGOWANY -> POKAŻ EKRAN LOGOWANIA
+  if (!session) {
+    return <Auth />;
+  }
+
+  // --- APLIKACJA WŁAŚCIWA (TYLKO DLA ZALOGOWANYCH) ---
+
   const [formData, setFormData] = useState({
     product: '',
     audience: '',
     goal: 'Sprzedaż',
     budget: 'Średni',
     tone: 'Profesjonalny',
-    platform: 'Facebook' // Domyślnie
-});
+    platform: 'Facebook'
+  });
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
@@ -22,7 +47,7 @@ function App() {
   const [copySuccess, setCopySuccess] = useState('');
   const [history, setHistory] = useState([]);
 
-  // --- ADRES TWOJEGO BACKENDU (Na sztywno) ---
+  // ADRES BACKENDU (Twoj Render)
   const API_URL = "https://marketing-agent-9q1l.onrender.com"; 
 
   useEffect(() => {
@@ -34,31 +59,23 @@ function App() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-// Wewnątrz client/src/App.jsx
-
   const handleSubmit = async () => {
     setLoading(true);
     setResult('');
     setImageUrl('');
     setCopySuccess('');
 
-    console.log("🚀 Wysyłam zapytanie do:", API_URL);
-
     try {
-      // 1. Wysyłanie tekstu
       const textResponse = await axios.post(`${API_URL}/api/campaign`, formData);
       const generatedText = textResponse.data.result;
       setResult(generatedText);
 
-      // 2. Wysyłanie obrazka (Z POPRAWKĄ "BEZ NAPISÓW")
-      // Dodajemy instrukcje "NO TEXT" i skupiamy się na fotografii
       const imagePrompt = `Professional product photography of ${formData.product}, style: ${formData.tone}, cinematic lighting, 8k resolution, photorealistic. PURE IMAGE, NO TEXT, NO TYPOGRAPHY, NO WORDS, NO LOGOS, CLEAN BACKGROUND.`;
       
       const imageResponse = await axios.post(`${API_URL}/api/image`, { prompt: imagePrompt });
       const generatedImage = imageResponse.data.url;
       setImageUrl(generatedImage);
 
-      // Zapis do historii
       const newEntry = {
         id: Date.now(),
         date: new Date().toLocaleString(),
@@ -78,7 +95,6 @@ function App() {
     }
   };
 
-  // Funkcje pomocnicze (bez zmian)
   const loadFromHistory = (entry) => {
     setFormData(entry.formData);
     setResult(entry.result);
@@ -87,7 +103,7 @@ function App() {
   };
 
   const clearHistory = () => {
-    if (confirm('Czy na pewno usunąć historię?')) {
+    if (confirm('Czy usunąć historię?')) {
       setHistory([]);
       localStorage.removeItem('campaignHistory');
     }
@@ -105,9 +121,20 @@ function App() {
     html2pdf().set(opt).from(element).save();
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="app">
-      <h1>🚀 Agent Marketingowy AI</h1>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto 20px auto'}}>
+        <h1 style={{margin: 0}}>🚀 Agent Marketingowy AI</h1>
+        <div style={{textAlign: 'right'}}>
+           <small style={{color: '#64748b'}}>Użytkownik: {session.user.email}</small><br/>
+           <button onClick={handleLogout} style={{padding: '5px 15px', fontSize: '0.8rem', width: 'auto', marginTop: '5px', backgroundColor: '#ef4444'}}>Wyloguj</button>
+        </div>
+      </div>
+      
       <div className="container">
         <div className="left-column">
           <div className="card input-section">
@@ -128,13 +155,13 @@ function App() {
               <option>Średni</option>
               <option>Wysoki</option>
             </select>
-<label>Platforma</label>
-<select name="platform" value={formData.platform} onChange={handleChange}>
-    <option value="Facebook">Facebook / Instagram Ads</option>
-    <option value="LinkedIn">LinkedIn (Post Ekspercki)</option>
-    <option value="TikTok">TikTok / Reels (Scenariusz Wideo)</option>
-    <option value="GoogleAds">Google Ads (Nagłówki)</option>
-</select>
+            <label>Platforma</label>
+            <select name="platform" value={formData.platform} onChange={handleChange}>
+                <option value="Facebook">Facebook / Instagram Ads</option>
+                <option value="LinkedIn">LinkedIn (Post Ekspercki)</option>
+                <option value="TikTok">TikTok / Reels (Scenariusz Wideo)</option>
+                <option value="GoogleAds">Google Ads (Nagłówki)</option>
+            </select>
             <label>Styl (Ton)</label>
             <select name="tone" value={formData.tone} onChange={handleChange}>
               <option value="Profesjonalny">Profesjonalny</option>
