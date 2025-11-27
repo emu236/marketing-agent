@@ -1,4 +1,3 @@
-// client/src/App.jsx - Wersja naprawiona (Hooks Fix)
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -8,202 +7,130 @@ import Auth from './Auth';
 import './App.css';
 
 function App() {
-  // 1. WSZYSTKIE HOOKI (useState, useEffect) MUSZĄ BYĆ NA GÓRZE
-  // Nie wolno ich przerywać żadnym "if" ani "return"
+  // ----------------------------------------------------
+  // SEKJA 1: WSZYSTKIE HOOKI (Musi być zawsze na górze)
+  // ----------------------------------------------------
 
+  // 1. Hooki stanu (useState)
   const [session, setSession] = useState(null);
-  const [loadingSession, setLoadingSession] = useState(true); // Dodajemy stan ładowania sesji
-
+  const [loadingSession, setLoadingSession] = useState(true);
   const [formData, setFormData] = useState({
-    product: '',
-    audience: '',
-    goal: 'Sprzedaż',
-    budget: 'Średni',
-    tone: 'Profesjonalny',
-    platform: 'Facebook'
+    product: '', audience: '', goal: 'Sprzedaż', budget: 'Średni', tone: 'Profesjonalny', platform: 'Facebook'
   });
-
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [copySuccess, setCopySuccess] = useState('');
   const [history, setHistory] = useState([]);
 
-  // ADRES TWOJEGO BACKENDU
-  const API_URL = "https://marketing-agent-9q1l.onrender.com"; 
+  // Adres API
+  const API_URL = "https://marketing-agent-9q1l.onrender.com";
 
-  // 2. USE EFFECTY (Też na górze)
-  
-  // Sprawdzanie sesji
+  // 2. Hooki efektów (useEffect) - Sesja
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoadingSession(false);
     });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoadingSession(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // Ładowanie historii
+  // 3. Hooki efektów (useEffect) - Historia
   useEffect(() => {
     const savedHistory = localStorage.getItem('campaignHistory');
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
+  // ----------------------------------------------------
+  // SEKJA 2: FUNKCJE POMOCNICZE
+  // ----------------------------------------------------
 
-  // 3. FUNKCJE (Handlers)
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
     setLoading(true);
     setResult('');
     setImageUrl('');
-    setCopySuccess('');
-
     try {
       const textResponse = await axios.post(`${API_URL}/api/campaign`, formData);
       const generatedText = textResponse.data.result;
       setResult(generatedText);
 
-      const imagePrompt = `Professional product photography of ${formData.product}, style: ${formData.tone}, cinematic lighting, 8k resolution, photorealistic. PURE IMAGE, NO TEXT, NO TYPOGRAPHY, NO WORDS, NO LOGOS, CLEAN BACKGROUND.`;
-      
+      const imagePrompt = `Professional product photography of ${formData.product}, style: ${formData.tone}, NO TEXT, clean background.`;
       const imageResponse = await axios.post(`${API_URL}/api/image`, { prompt: imagePrompt });
       const generatedImage = imageResponse.data.url;
       setImageUrl(generatedImage);
 
-      const newEntry = {
-        id: Date.now(),
-        date: new Date().toLocaleString(),
-        formData: { ...formData },
-        result: generatedText,
-        imageUrl: generatedImage
-      };
+      const newEntry = { id: Date.now(), date: new Date().toLocaleString(), formData: { ...formData }, result: generatedText, imageUrl: generatedImage };
       const updatedHistory = [newEntry, ...history];
       setHistory(updatedHistory);
       localStorage.setItem('campaignHistory', JSON.stringify(updatedHistory));
-
     } catch (error) {
-      console.error("❌ BŁĄD:", error);
-      setResult(`⚠️ Wystąpił błąd połączenia: ${error.message}`);
+      console.error(error);
+      setResult(`Błąd: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadFromHistory = (entry) => {
-    setFormData(entry.formData);
-    setResult(entry.result);
-    setImageUrl(entry.imageUrl);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const clearHistory = () => {
-    if (confirm('Czy na pewno usunąć historię?')) {
-      setHistory([]);
-      localStorage.removeItem('campaignHistory');
-    }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(result);
-    setCopySuccess('Skopiowano! ✅');
-    setTimeout(() => setCopySuccess(''), 3000);
-  };
-
+  const handleLogout = async () => await supabase.auth.signOut();
+  const clearHistory = () => { if(confirm('Usunąć?')) { setHistory([]); localStorage.removeItem('campaignHistory'); } };
+  const loadFromHistory = (entry) => { setFormData(entry.formData); setResult(entry.result); setImageUrl(entry.imageUrl); };
+  const handleCopy = () => { navigator.clipboard.writeText(result); setCopySuccess('Skopiowano!'); setTimeout(() => setCopySuccess(''), 3000); };
   const handleDownloadPDF = () => {
     const element = document.getElementById('report-content');
-    const opt = { margin: 1, filename: `Kampania_${formData.product}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-    html2pdf().set(opt).from(element).save();
+    html2pdf().from(element).save();
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  // ----------------------------------------------------
+  // SEKJA 3: WARUNKOWE WYŚWIETLANIE (Dopiero tutaj!)
+  // ----------------------------------------------------
 
+  if (loadingSession) return <div className="container" style={{textAlign:'center', marginTop:'50px'}}>Ładowanie...</div>;
+  if (!session) return <Auth />;
 
-  // 4. WARUNKI WYŚWIETLANIA (Dopiero TUTAJ możemy użyć "return")
-
-  // Jeśli jeszcze sprawdzamy czy zalogowany -> pokaż pusty ekran lub loader
-  if (loadingSession) {
-    return <div className="container" style={{textAlign: 'center', marginTop: '50px'}}>Ładowanie...</div>;
-  }
-
-  // Jeśli NIE zalogowany -> pokaż Auth
-  if (!session) {
-    return <Auth />;
-  }
-
-  // Jeśli Zalogowany -> Pokaż Aplikację
+  // ----------------------------------------------------
+  // SEKJA 4: GŁÓWNY INTERFEJS (Dla zalogowanych)
+  // ----------------------------------------------------
   return (
     <div className="app">
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto 20px auto'}}>
-        <h1 style={{margin: 0}}>🚀 Agent Marketingowy AI</h1>
+      <div style={{display: 'flex', justifyContent: 'space-between', maxWidth: '1200px', margin: '0 auto 20px'}}>
+        <h1>🚀 Agent AI</h1>
         <div style={{textAlign: 'right'}}>
-           <small style={{color: '#64748b'}}>Użytkownik: {session?.user?.email}</small><br/>
-           <button onClick={handleLogout} style={{padding: '5px 15px', fontSize: '0.8rem', width: 'auto', marginTop: '5px', backgroundColor: '#ef4444'}}>Wyloguj</button>
+           <small>{session?.user?.email}</small><br/>
+           <button onClick={handleLogout} style={{padding: '5px 10px', background: '#ef4444'}}>Wyloguj</button>
         </div>
       </div>
       
       <div className="container">
         <div className="left-column">
           <div className="card input-section">
-            <h2>Nowa Kampania</h2>
-            <label>Produkt/Usługa</label>
-            <input name="product" value={formData.product} placeholder="np. Kurs Jogi" onChange={handleChange} />
-            <label>Grupa docelowa</label>
-            <input name="audience" value={formData.audience} placeholder="np. Zapracowane mamy" onChange={handleChange} />
+            <label>Produkt</label><input name="product" value={formData.product} onChange={handleChange} />
+            <label>Odbiorcy</label><input name="audience" value={formData.audience} onChange={handleChange} />
             <label>Cel</label>
             <select name="goal" value={formData.goal} onChange={handleChange}>
-              <option>Sprzedaż online</option>
-              <option>Leady</option>
-              <option>Zasięg</option>
-            </select>
-            <label>Budżet</label>
-            <select name="budget" value={formData.budget} onChange={handleChange}>
-              <option>Niski</option>
-              <option>Średni</option>
-              <option>Wysoki</option>
+              <option>Sprzedaż</option><option>Leady</option><option>Zasięg</option>
             </select>
             <label>Platforma</label>
             <select name="platform" value={formData.platform} onChange={handleChange}>
-                <option value="Facebook">Facebook / Instagram Ads</option>
-                <option value="LinkedIn">LinkedIn (Post Ekspercki)</option>
-                <option value="TikTok">TikTok / Reels (Scenariusz Wideo)</option>
-                <option value="GoogleAds">Google Ads (Nagłówki)</option>
+                <option value="Facebook">Facebook</option><option value="LinkedIn">LinkedIn</option><option value="TikTok">TikTok</option>
             </select>
-            <label>Styl (Ton)</label>
-            <select name="tone" value={formData.tone} onChange={handleChange}>
-              <option value="Profesjonalny">Profesjonalny</option>
-              <option value="Luźny">Luźny</option>
-              <option value="Agresywny">Agresywny 🔥</option>
-            </select>
-            <button onClick={handleSubmit} disabled={loading}>{loading ? 'Przetwarzanie...' : 'Generuj Kampanię ✨'}</button>
+            <button onClick={handleSubmit} disabled={loading}>{loading ? '...' : 'Generuj'}</button>
           </div>
-          {history.length > 0 && (
-            <div className="card history-section">
-              <div style={{display: 'flex', justifyContent: 'space-between'}}><h2>📜 Historia</h2><button className="btn-small-danger" onClick={clearHistory}>Wyczyść</button></div>
-              <div className="history-list">{history.map((item) => (<div key={item.id} className="history-item" onClick={() => loadFromHistory(item)}><strong>{item.formData.product}</strong><span className="history-date">{item.date}</span></div>))}</div>
-            </div>
-          )}
+          {history.length > 0 && <div className="card"><button onClick={clearHistory}>Wyczyść historię</button>
+            {history.map(item => <div key={item.id} onClick={() => loadFromHistory(item)} style={{cursor:'pointer', borderBottom:'1px solid #eee', padding:'5px'}}>{item.formData.product}</div>)}
+          </div>}
         </div>
         <div className="card result-section">
-          <h2>Twój Plan Marketingowy</h2>
-          {loading && <div className="loader">Tworzę strategię... Może to potrwać do minuty 🤖</div>}
-          {!loading && !result && <p className="placeholder-text">Wypełnij formularz, aby zobaczyć wynik.</p>}
-          {result && ( <><div className="action-buttons"><button className="btn-secondary" onClick={handleCopy}>📋 Kopiuj</button><button className="btn-secondary" onClick={handleDownloadPDF}>📄 PDF</button></div>{copySuccess && <p className="success-msg">{copySuccess}</p>}</>)}
           <div id="report-content">
-            {result && <div className="result-area"><ReactMarkdown>{result}</ReactMarkdown></div>}
-            {imageUrl && <div className="image-container"><h3>Kreacja Graficzna:</h3><img src={imageUrl} alt="Ad" className="generated-image" /></div>}
+            {result && <ReactMarkdown>{result}</ReactMarkdown>}
+            {imageUrl && <img src={imageUrl} style={{width:'100%', marginTop:'20px'}} />}
           </div>
+          {result && <button onClick={handleDownloadPDF}>Pobierz PDF</button>}
         </div>
       </div>
     </div>
