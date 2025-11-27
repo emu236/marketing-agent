@@ -46,12 +46,12 @@ function App() {
 
     try {
       // Zapytanie do backendu
-      const textResponse = await axios.post('https://marketing-agent-9q1l.onrender.com', formData);
+      const textResponse = await axios.post('https://marketing-agent-9q1l.onrender.com/api/campaign', formData);
       const generatedText = textResponse.data.result;
       setResult(generatedText);
 
       const imagePrompt = `Professional advertisement photo for ${formData.product}, style: ${formData.tone}, high quality`;
-      const imageResponse = await axios.post('https://marketing-agent-9q1l.onrender.com', { prompt: imagePrompt });
+      const imageResponse = await axios.post('https://marketing-agent-9q1l.onrender.com/api/image', { prompt: imagePrompt });
       const generatedImage = imageResponse.data.url;
       setImageUrl(generatedImage);
 
