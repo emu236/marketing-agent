@@ -1,3 +1,4 @@
+// Wersja Ostateczna - Próba naprawy
 // client/src/App.jsx - Wersja naprawcza
 import { useState, useEffect } from 'react';
 import axios from 'axios';
