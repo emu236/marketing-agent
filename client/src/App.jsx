@@ -34,6 +34,8 @@ function App() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+// Wewnątrz client/src/App.jsx
+
   const handleSubmit = async () => {
     setLoading(true);
     setResult('');
@@ -43,13 +45,15 @@ function App() {
     console.log("🚀 Wysyłam zapytanie do:", API_URL);
 
     try {
-      // 1. Wysyłanie tekstu (z poprawną końcówką /api/campaign)
+      // 1. Wysyłanie tekstu
       const textResponse = await axios.post(`${API_URL}/api/campaign`, formData);
       const generatedText = textResponse.data.result;
       setResult(generatedText);
 
-      // 2. Wysyłanie obrazka (z poprawną końcówką /api/image)
-      const imagePrompt = `Professional advertisement photo for ${formData.product}, style: ${formData.tone}, high quality`;
+      // 2. Wysyłanie obrazka (Z POPRAWKĄ "BEZ NAPISÓW")
+      // Dodajemy instrukcje "NO TEXT" i skupiamy się na fotografii
+      const imagePrompt = `Professional product photography of ${formData.product}, style: ${formData.tone}, cinematic lighting, 8k resolution, photorealistic. PURE IMAGE, NO TEXT, NO TYPOGRAPHY, NO WORDS, NO LOGOS, CLEAN BACKGROUND.`;
+      
       const imageResponse = await axios.post(`${API_URL}/api/image`, { prompt: imagePrompt });
       const generatedImage = imageResponse.data.url;
       setImageUrl(generatedImage);
@@ -68,7 +72,6 @@ function App() {
 
     } catch (error) {
       console.error("❌ BŁĄD:", error);
-      // Wyświetl dokładny błąd na ekranie
       setResult(`⚠️ Wystąpił błąd połączenia: ${error.message}`);
     } finally {
       setLoading(false);
