@@ -1,36 +1,18 @@
-// client/src/App.jsx
+// client/src/App.jsx - Wersja naprawiona (Hooks Fix)
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
-import { supabase } from './supabaseClient'; // Baza danych
-import Auth from './Auth'; // Ekran logowania
+import { supabase } from './supabaseClient';
+import Auth from './Auth';
 import './App.css';
 
 function App() {
-  // 1. Sprawdzanie sesji użytkownika
+  // 1. WSZYSTKIE HOOKI (useState, useEffect) MUSZĄ BYĆ NA GÓRZE
+  // Nie wolno ich przerywać żadnym "if" ani "return"
+
   const [session, setSession] = useState(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // JEŚLI NIE ZALOGOWANY -> POKAŻ EKRAN LOGOWANIA
-  if (!session) {
-    return <Auth />;
-  }
-
-  // --- APLIKACJA WŁAŚCIWA (TYLKO DLA ZALOGOWANYCH) ---
+  const [loadingSession, setLoadingSession] = useState(true); // Dodajemy stan ładowania sesji
 
   const [formData, setFormData] = useState({
     product: '',
@@ -47,14 +29,36 @@ function App() {
   const [copySuccess, setCopySuccess] = useState('');
   const [history, setHistory] = useState([]);
 
-  // ADRES BACKENDU (Twoj Render)
+  // ADRES TWOJEGO BACKENDU
   const API_URL = "https://marketing-agent-9q1l.onrender.com"; 
 
+  // 2. USE EFFECTY (Też na górze)
+  
+  // Sprawdzanie sesji
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoadingSession(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoadingSession(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Ładowanie historii
   useEffect(() => {
     const savedHistory = localStorage.getItem('campaignHistory');
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
+
+  // 3. FUNKCJE (Handlers)
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -103,7 +107,7 @@ function App() {
   };
 
   const clearHistory = () => {
-    if (confirm('Czy usunąć historię?')) {
+    if (confirm('Czy na pewno usunąć historię?')) {
       setHistory([]);
       localStorage.removeItem('campaignHistory');
     }
@@ -125,12 +129,26 @@ function App() {
     await supabase.auth.signOut();
   };
 
+
+  // 4. WARUNKI WYŚWIETLANIA (Dopiero TUTAJ możemy użyć "return")
+
+  // Jeśli jeszcze sprawdzamy czy zalogowany -> pokaż pusty ekran lub loader
+  if (loadingSession) {
+    return <div className="container" style={{textAlign: 'center', marginTop: '50px'}}>Ładowanie...</div>;
+  }
+
+  // Jeśli NIE zalogowany -> pokaż Auth
+  if (!session) {
+    return <Auth />;
+  }
+
+  // Jeśli Zalogowany -> Pokaż Aplikację
   return (
     <div className="app">
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto 20px auto'}}>
         <h1 style={{margin: 0}}>🚀 Agent Marketingowy AI</h1>
         <div style={{textAlign: 'right'}}>
-           <small style={{color: '#64748b'}}>Użytkownik: {session.user.email}</small><br/>
+           <small style={{color: '#64748b'}}>Użytkownik: {session?.user?.email}</small><br/>
            <button onClick={handleLogout} style={{padding: '5px 15px', fontSize: '0.8rem', width: 'auto', marginTop: '5px', backgroundColor: '#ef4444'}}>Wyloguj</button>
         </div>
       </div>
