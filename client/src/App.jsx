@@ -12,8 +12,9 @@ function App() {
     audience: '',
     goal: 'Sprzedaż',
     budget: 'Średni',
-    tone: 'Profesjonalny'
-  });
+    tone: 'Profesjonalny',
+    platform: 'Facebook' // Domyślnie
+});
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
@@ -124,6 +125,13 @@ function App() {
               <option>Średni</option>
               <option>Wysoki</option>
             </select>
+<label>Platforma</label>
+<select name="platform" value={formData.platform} onChange={handleChange}>
+    <option value="Facebook">Facebook / Instagram Ads</option>
+    <option value="LinkedIn">LinkedIn (Post Ekspercki)</option>
+    <option value="TikTok">TikTok / Reels (Scenariusz Wideo)</option>
+    <option value="GoogleAds">Google Ads (Nagłówki)</option>
+</select>
             <label>Styl (Ton)</label>
             <select name="tone" value={formData.tone} onChange={handleChange}>
               <option value="Profesjonalny">Profesjonalny</option>
