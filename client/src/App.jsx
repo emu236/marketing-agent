@@ -1,4 +1,4 @@
-// client/src/App.jsx - Wersja PANCERNA (Brak błędu #310)
+// client/src/App.jsx - PEŁNA WERSJA (GŁÓWNY PLIK)
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -26,7 +26,7 @@ function App() {
   const [copySuccess, setCopySuccess] = useState('');
   const [history, setHistory] = useState([]);
 
-  // URL
+  // URL BACKENDU
   const API_URL = "https://marketing-agent-9q1l.onrender.com"; 
 
   // Efekt: Sesja
@@ -106,7 +106,7 @@ function App() {
   };
 
 
-  // --- SEKCJA 3: JEDEN GŁÓWNY RETURN (To naprawia błąd) ---
+  // --- SEKCJA 3: GŁÓWNY WIDOK ---
   return (
     <>
       {/* SCENARIUSZ 1: Ładowanie */}

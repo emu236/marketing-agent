@@ -13,8 +13,17 @@ export default function Auth() {
     setLoading(true)
     setMessage('')
     
-    // Logowanie Magic Linkiem (bez hasła)
-    const { error } = await supabase.auth.signInWithOtp({ email })
+    // 1. Pobieramy aktualny adres strony (np. https://twoja-app.vercel.app)
+    // Dzięki temu Supabase wie, gdzie wrócić po kliknięciu w maila
+    const currentUrl = window.location.origin;
+
+    // 2. Wysyłamy prośbę o Magic Link z instrukcją powrotu
+    const { error } = await supabase.auth.signInWithOtp({ 
+      email,
+      options: {
+        emailRedirectTo: currentUrl, 
+      },
+    })
 
     if (error) {
       setMessage(`Błąd: ${error.message}`)
